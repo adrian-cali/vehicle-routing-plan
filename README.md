@@ -52,7 +52,7 @@ This is the recommended way to run the full system.
 ### 1. Clone the repository
 
 ```bash
-git clone https://github.com/jordannealexie/vrp.git
+git clone https://github.com/adrian-cali/vehicle-routing-plan.git
 cd vrp
 ```
 
