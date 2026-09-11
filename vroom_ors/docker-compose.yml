@@ -1,0 +1,42 @@
+version: "3.8"
+services:
+    osrm:
+        container_name: osrm
+        image: ghcr.io/project-osrm/osrm-backend
+        restart: always
+        ports:
+            - "5001:5000"
+        volumes:
+            - ./osrm-philippines:/data
+        networks:
+            - tsp_network
+        command: >-
+            osrm-routed --max-matching-size 1000 --max-table-size 1000
+            --max-viaroute-size 1000 --algorithm mld /data/philippines-latest.osrm
+        healthcheck:
+            test:
+                ["CMD", "sh", "-c",
+                "wget -qO- 'http://127.0.0.1:5000/route/v1/driving/121.0000,14.6000;121.0100,14.6100?overview=false' >/dev/null"]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+            start_period: 40s
+
+    vroom:
+        image: ghcr.io/vroom-project/vroom-docker:v1.14.0
+        container_name: vroom
+        restart: always
+        ports:
+            - "3000:3000"
+        volumes:
+            - ./vroom_conf/:/conf
+        networks:
+            - tsp_network
+        depends_on:
+            osrm:
+                condition: service_healthy
+        # Remove the VROOM_ROUTER environment variable - it's causing the error
+
+networks:
+    tsp_network:
+        driver: bridge

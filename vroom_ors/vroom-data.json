@@ -1,0 +1,85 @@
+{
+	"vehicles": [
+		{
+			"id": 1,
+			"description": "Vehicle 1",
+			"start": [
+				174.76177,-36.88076
+			],
+			"end": [
+				174.76177,-36.88076
+			],
+			"time_window": [
+				28800,
+				36000
+			]
+		},
+		{
+			"id": 2,
+			"description": "Vehicle 2",
+			"start": [
+				174.76177,-36.88076
+			],
+			"end": [
+				174.76177,-36.88076
+			],
+			"time_window": [
+				28800,
+				36000
+			]
+		}
+	],
+	"jobs": [
+		{
+			"id": 1,
+			"description": "This is site 1",
+			"location": [
+				174.62406,-36.83404
+			],
+			"service": 600
+		},
+		{
+			"id": 2,
+			"description": "This is site 2",
+			"location": [
+				174.77897,-36.8707
+			],
+			"service": 600
+		},
+		{
+			"id": 3,
+			"description": "This is site 3",
+			"location": [
+				174.84792,-36.87756
+			],
+			"service": 600
+		},
+		{
+			"id": 4,
+			"description": "This is site 4",
+			"location": [
+				174.82443,-36.90742
+			],
+			"service": 600
+		},
+		{
+			"id": 5,
+			"description": "This is site 5",
+			"location": [
+				174.65564,-36.92365
+			],
+			"service": 600
+		},
+		{
+			"id": 6,
+			"description": "This is site 6",
+			"location": [
+				174.59617,-36.88914
+			],
+			"service": 600
+		}
+	],
+	"options": {
+		"g": false
+	}
+}

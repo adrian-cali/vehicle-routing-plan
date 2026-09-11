@@ -1,0 +1,11 @@
+line-length = 120
+select = ["E", "F", "I", "B", "UP", "ASYNC", "RUF"]
+ignore = [
+    "E203", # whitespace before ':' (compat with black-style slicing)
+]
+exclude = [
+    ".venv",
+    "build",
+    "dist",
+    "__pycache__",
+]

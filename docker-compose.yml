@@ -1,0 +1,143 @@
+# ──────────────────────────────────────────────────────────────────────
+# Full-stack VRP Optimizer — Docker Compose
+# ──────────────────────────────────────────────────────────────────────
+# Services:
+#   postgres   — PostgreSQL 16
+#   redis      — Redis 7 (Celery broker + cache)
+#   osrm       — OSRM routing engine (Philippines MLD)
+#   vroom      — VROOM vehicle routing solver
+#   api        — FastAPI backend
+#   celery     — Celery background worker
+# ──────────────────────────────────────────────────────────────────────
+
+version: "3.8"
+
+x-common-env: &common-env
+  DATABASE_URL: postgresql://postgres:postgres@postgres:5432/vrp
+  REDIS_URL: redis://redis:6379/0
+  CELERY_BROKER_URL: redis://redis:6379/0
+  CELERY_RESULT_BACKEND: redis://redis:6379/0
+  OSRM_URL: http://osrm:5000
+  VROOM_URL: http://vroom:3000
+  LOG_LEVEL: INFO
+
+services:
+  # ── Data stores ───────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: vrp-postgres
+    restart: unless-stopped
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: vrp
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./backend/scripts/init_db.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: vrp-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── Routing engines ──────────────────────────────────────────────
+  osrm:
+    image: ghcr.io/project-osrm/osrm-backend
+    container_name: vrp-osrm
+    restart: unless-stopped
+    ports:
+      - "5001:5000"
+    volumes:
+      - ./vroom_ors/osrm-philippines:/data:ro
+    command: >-
+      osrm-routed
+      --max-matching-size 1000
+      --max-table-size 1000
+      --max-viaroute-size 1000
+      --algorithm mld
+      /data/philippines-latest.osrm
+    healthcheck:
+      test:
+        ["CMD", "sh", "-c",
+         "wget -qO- 'http://127.0.0.1:5000/route/v1/driving/121.0,14.6;121.01,14.61?overview=false' >/dev/null"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  vroom:
+    image: ghcr.io/vroom-project/vroom-docker:v1.14.0
+    container_name: vrp-vroom
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./vroom_ors/vroom_conf:/conf
+    depends_on:
+      osrm:
+        condition: service_healthy
+
+  # ── Application ──────────────────────────────────────────────────
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: vrp-api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      <<: *common-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      osrm:
+        condition: service_healthy
+      vroom:
+        condition: service_started
+    # Override CMD for development (auto-reload)
+    # command: uvicorn backend.app:app --host 0.0.0.0 --port 8000 --reload
+
+  celery:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: vrp-celery
+    restart: unless-stopped
+    environment:
+      <<: *common-env
+    command: >-
+      celery -A backend.celery_app worker
+      --loglevel=info
+      --concurrency=2
+      --max-tasks-per-child=100
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+volumes:
+  pgdata:
+    driver: local
+
+networks:
+  default:
+    name: vrp-network
+    driver: bridge
